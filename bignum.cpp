@@ -1,15 +1,22 @@
+#include <algorithm>
 #include <bits/stdc++.h>
 #include <cstdint>
-#include <random>
 #include <string.h>
 #include <vector>
 
-typedef std::vector<int32_t> Digits;
+typedef std::vector<int16_t> Digits;
 
 struct BigNum;
 struct PairIterator;
+
+void swap_sign_with_other(BigNum& a, BigNum& b);
 void shift_left(BigNum& a, int8_t shift);
 void shift_right(BigNum& a, int8_t shift);
+void normalize(BigNum& a);
+void abs(BigNum& a);
+void swap_digits(BigNum& a, BigNum& b);
+
+BigNum fromString(std::string a);
 
 struct PairIterator {
     PairIterator(const Digits& a, const Digits& b) {
@@ -18,17 +25,20 @@ struct PairIterator {
         this->ea = a.end();
         this->eb = b.end();
     }
+
     bool notEnd() {
         return a != ea && b != eb;
     }
+
     void next() {
         ++a;
         ++b;
     }
-    Digits::const_iterator a;  // Use const_iterator instead of iterator
-    Digits::const_iterator b;  // Use const_iterator instead of iterator
-    Digits::const_iterator ea; // Use const_iterator instead of iterator
-    Digits::const_iterator eb; // Use const_iterator instead of iterator
+
+    Digits::const_iterator a;  
+    Digits::const_iterator b;  
+    Digits::const_iterator ea; 
+    Digits::const_iterator eb; 
 };
 
 enum Sign {
@@ -38,16 +48,23 @@ enum Sign {
 
 struct BigNum {
 	Digits _digits;
-	Sign sign = POSITIVE;
+	Sign sign;
 };
 
 void normalize(BigNum& a) {
 	int8_t i = 0;
 	for(; i<a._digits.size() and a._digits[i] == 0; i++);
 	shift_right(a, i);
+	if(a._digits.size() == 0) {
+		a._digits.push_back(0);
+	}
 }
 
-void swap_sign_with_oter(BigNum& a, BigNum& b) {
+void swap_digits(BigNum& a, BigNum& b) {
+	a._digits.swap(b._digits);
+}
+
+void swap_sign_with_other(BigNum& a, BigNum& b) {
 	Sign tempSign = a.sign;
 	a.sign = b.sign;
 	b.sign = tempSign;
@@ -80,7 +97,6 @@ BigNum newBigNum(int64_t a) {
 
 BigNum fromString(std::string a) {
 	Sign sign = POSITIVE;
-	std::string digits;
 
 	if (a[0] == '-') {
 		sign = NEGATIVE;
@@ -92,11 +108,11 @@ BigNum fromString(std::string a) {
 	}
 
 	Digits res(a.size());
-	Digits::iterator resit = res.begin(); 
+	Digits::iterator resit = res.end() -1; 
 	std::string::iterator ait = a.begin();
 
-	while(resit != res.end() && ait != a.end()) {
-		*resit++ = *ait++ - '0';
+	while(resit != res.begin() -1 && ait != a.end()) {
+		*resit-- = *ait++ - '0';
 	}
 
 	return { res, sign };
@@ -138,10 +154,6 @@ void _subtract(BigNum& a, const BigNum& b) {
 	}
 
 	normalize(a);
-
-	if(a._digits.size() == 0) {
-		a._digits.push_back(0);
-	}
 }
 
 void _multiply_by_int(BigNum& a, int b) {
@@ -172,9 +184,13 @@ std::istream& operator>>(std::istream& is, BigNum& bigNum) {
 
 std::ostream& operator<<(std::ostream& os, const BigNum& bigNum) {
 	os << (bigNum.sign == NEGATIVE ? "-" : "");
-	// optimize using std::copy to string
-	for(auto d : bigNum._digits) 
+	Digits temp = bigNum._digits;
+
+	std::sort(temp.begin(), temp.end());
+	for(auto d : temp) {
 		os << d;
+	}
+
 	return os;
 }
 
@@ -206,28 +222,75 @@ bool operator>(const BigNum& a, const BigNum& b) {
 	return true;
 }
 
+bool operator>=(const BigNum& a, const BigNum& b) {
+	return a == b || a > b;
+}
+
 bool operator<(const BigNum& a, const BigNum b) {
 	return !(a == b) && !(a > b);
 }
 
-BigNum operator+(const BigNum& a, const BigNum& b) {
-	// can be optimized
-	BigNum a1 = b > a ? b : a;
-	BigNum b1 = b > a ? a : b;
+BigNum operator+(BigNum& a, const BigNum& b) {
+	BigNum c;
+	c._digits = b._digits;
+	if (a.sign != b.sign) {
+		if(!(a >= b)) {
+			swap_digits(a, c);
+			swap_sign_with_other(a, c);
+		}
 
+		_subtract(a, c);
+		normalize(a);
+		return a;
+	}
+
+	_add(a, c);
+	normalize(a);
+	return a;
 }
+#ifdef problem
+BigNum zero = fromString("0");
+BigNum gcd(BigNum a, BigNum b) {
+    return (b == zero) ? a : gcd(b, a % b);
+}
+#endif
+
 
 int main() {
-	std::string input;
-	std::cin >> input;
-
-	BigNum a = fromString(input);
-
-	std::cin >> input;
-	BigNum b = fromString(input);
-
+	BigNum a, b;
+	std::cin >> a >> b;
 	std::cout << a << " " << b << std::endl;
-	_add(a, b);
-	normalize(a);
-	std::cout << a << " " << b << std::endl;
+
+	a = a + b;
+
+	std::cout << a;
+
 }
+
+/*
+int main() {
+    int n, temp;
+    scanf("%d", &n);
+
+    std::vector<BigNum> m(n);
+
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &temp);
+    	m[i] = newBigNum(temp);
+    }
+
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            BigNum temp = gcd(m[i], m[j]);
+            m[j] /= temp;
+        }
+    }
+
+    BigNum res = fromString("0");
+    for (int i = 0; i < n; i++)
+        res *= m[i];
+
+    std::cout << res << std::endl;
+    return 0;
+}
+*/
