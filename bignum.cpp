@@ -186,7 +186,7 @@ std::ostream& operator<<(std::ostream& os, const BigNum& bigNum) {
 	os << (bigNum.sign == NEGATIVE ? "-" : "");
 	Digits temp = bigNum._digits;
 
-	std::sort(temp.begin(), temp.end());
+	std::reverse(temp.begin(), temp.end());
 	for(auto d : temp) {
 		os << d;
 	}
