@@ -9,7 +9,7 @@ typedef std::vector<int16_t> Digits;
 struct BigNum;
 struct PairIterator;
 
-void swap_sign_with_other(BigNum& a, BigNum& b);
+void swap_sign(BigNum& a, BigNum& b);
 void shift_left(BigNum& a, int8_t shift);
 void shift_right(BigNum& a, int8_t shift);
 void normalize(BigNum& a);
@@ -17,7 +17,9 @@ void abs(BigNum& a);
 void swap_digits(BigNum& a, BigNum& b);
 void _add(BigNum& a, const BigNum& b);
 void _subtract(BigNum& a, const BigNum& b);
-void _multiply_by_int(BigNum& a, int b);
+
+template<typename PrimitiveType>
+void _multiply_by_int(BigNum& a, PrimitiveType b);
 
 BigNum fromString(std::string a);
 BigNum fromInt(int64_t a);
@@ -56,9 +58,14 @@ struct BigNum {
 };
 
 void normalize(BigNum& a) {
-	int8_t i = 0;
-	for(; i<a._digits.size() and a._digits[i] == 0; i++);
-	shift_right(a, i);
+	int8_t c = 0;
+
+	for(int i = a._digits.size()-1; i != 0; i--) {
+		if(a._digits[i] > 0) break;
+		c++;
+	}
+
+	shift_right(a, c);
 	if(a._digits.size() == 0) {
 		a._digits.push_back(0);
 	}
@@ -68,7 +75,7 @@ void swap_digits(BigNum& a, BigNum& b) {
 	a._digits.swap(b._digits);
 }
 
-void swap_sign_with_other(BigNum& a, BigNum& b) {
+void swap_sign(BigNum& a, BigNum& b) {
 	Sign tempSign = a.sign;
 	a.sign = b.sign;
 	b.sign = tempSign;
@@ -161,11 +168,12 @@ void _subtract(BigNum& a, const BigNum& b) {
 	normalize(a);
 }
 
-void _multiply_by_int(BigNum& a, int b) {
-	int32_t carry = 0;
+template<typename PrimitiveType>
+void _multiply_by_int(BigNum& a, PrimitiveType b) {
+	PrimitiveType carry = 0;
 
 	for(auto& digit : a._digits) {
-		int product = digit * b + carry;
+		PrimitiveType product = digit * b + carry;
 		digit = product % 10;
 		carry = product / 10;
 	}
@@ -235,7 +243,7 @@ bool operator<(const BigNum& a, const BigNum b) {
 	return !(a == b) && !(a > b);
 }
 
-BigNum operator+(BigNum& a, const BigNum& b) {
+BigNum operator+=(BigNum& a, const BigNum& b) {
 	BigNum c;
 	c._digits = b._digits;
 	c.sign = b.sign;
@@ -243,7 +251,7 @@ BigNum operator+(BigNum& a, const BigNum& b) {
 	if (a.sign != b.sign) {
 		if(!(a >= b)) {
 			swap_digits(a, c);
-			swap_sign_with_other(a, c);
+			swap_sign(a, c);
 		}
 
 		_subtract(a, c);
@@ -256,67 +264,92 @@ BigNum operator+(BigNum& a, const BigNum& b) {
 	return a;
 }
 
-BigNum operator-(BigNum& a, const BigNum& b) {
+
+BigNum operator+(const BigNum& a, const BigNum& b) {
+	BigNum a1;
+	a1._digits = a._digits;
+	a1.sign = a.sign;
+
+	BigNum b1;
+	b1._digits = b._digits;
+	b1.sign = b.sign;
+
+	if (a1.sign != b1.sign) {
+		if(!(a1 >= b1)) {
+			swap_digits(a1, b1);
+			swap_sign(a1, b1);
+		}
+
+		_subtract(a1, b1);
+		normalize(a1);
+		return a1;
+	}
+
+	_add(a1, b1);
+	normalize(a1);
+	return a1;
+}
+
+BigNum operator-=(BigNum& a, const BigNum& b) {
 	BigNum c;
 	c._digits = b._digits;
 	c.sign = b.sign;
 
 	if(a < b) {
 		swap_digits(a, c);
-		swap_sign_with_other(a, c);
+		swap_sign(a, c);
 	}
 
 	if(a.sign == Sign::POSITIVE && c.sign == Sign::POSITIVE) {
 		_subtract(a, c);
+		return a;
 	}
 
 	_add(a, c);
 
-	return c;
+	return a;
 }
 
-#ifdef problem
-BigNum zero = fromString("0");
-BigNum gcd(BigNum a, BigNum b) {
-    return (b == zero) ? a : gcd(b, a % b);
-}
-#endif
+BigNum operator-(const BigNum& a, const BigNum& b) {
+	BigNum a1;
+	a1._digits = a._digits;
+	a1.sign = a.sign;
 
+	BigNum b1;
+	b1._digits = b._digits;
+	b1.sign = b.sign;
+
+	if(a < b) {
+		swap_digits(a1, b1);
+		swap_sign(a1, b1);
+	}
+
+	if(a1.sign == Sign::POSITIVE && b1.sign == Sign::POSITIVE) {
+		_subtract(a1, b1);
+		return a1;
+	}
+
+	_add(a1, b1);
+
+	return a1;
+}
+
+template<typename PrimitiveType>
+BigNum operator*=(BigNum& a, PrimitiveType b) {
+	_multiply_by_int(a, b);
+	return a;
+}
 
 int main() {
-	BigNum a, b;
-	std::cin >> a >> b;
-	std::cout << a << " " << b << std::endl;
+	BigNum a = fromString("1");
+	int b;
 
-	a = a + b;
+	std::cin >> b;
 
-	std::cout << a;
+	while(b) {
+		a *= b;
+		b--;
+	}
+
+	std::cout << a << std::endl;
 }
-
-/*
-int main() {
-    int n, temp;
-    scanf("%d", &n);
-
-    std::vector<BigNum> m(n);
-
-    for (int i = 0; i < n; i++) {
-        scanf("%d", &temp);
-    	m[i] = newBigNum(temp);
-    }
-
-    for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            BigNum temp = gcd(m[i], m[j]);
-            m[j] /= temp;
-        }
-    }
-
-    BigNum res = fromString("0");
-    for (int i = 0; i < n; i++)
-        res *= m[i];
-
-    std::cout << res << std::endl;
-    return 0;
-}
-*/
