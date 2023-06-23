@@ -24,30 +24,7 @@ void _multiply_by_int(BigNum& a, PrimitiveType b);
 BigNum fromString(std::string a);
 BigNum fromInt(int64_t a);
 
-struct PairIterator {
-    PairIterator(const Digits& a, const Digits& b) {
-        this->a = a.begin();
-        this->b = b.begin();
-        this->ea = a.end();
-        this->eb = b.end();
-    }
-
-    bool notEnd() {
-        return a != ea && b != eb;
-    }
-
-    void next() {
-        ++a;
-        ++b;
-    }
-
-    Digits::const_iterator a;  
-    Digits::const_iterator b;  
-    Digits::const_iterator ea; 
-    Digits::const_iterator eb; 
-};
-
-enum Sign {
+enum class Sign {
 	POSITIVE,
 	NEGATIVE,
 };
@@ -82,7 +59,7 @@ void swap_sign(BigNum& a, BigNum& b) {
 }
 
 void abs(BigNum& a) {
-	a.sign = POSITIVE;
+	a.sign = Sign::POSITIVE;
 }
 
 void shift_left(BigNum& a, int8_t shift) {
@@ -104,14 +81,23 @@ void shift_right(BigNum& a, int8_t shift) {
 }
 
 BigNum fromInt(int64_t a) {
-	;
+	BigNum bigNum;
+	bigNum.sign = (a < 0 ? Sign::NEGATIVE : Sign::POSITIVE);
+
+	a = std::abs(a);
+	while(a) {
+		bigNum._digits.push_back(a % 10);
+		a /= 10;
+	}
+
+	return bigNum;
 }
 
 BigNum fromString(std::string a) {
-	Sign sign = POSITIVE;
+	Sign sign = Sign::POSITIVE;
 
 	if (a[0] == '-') {
-		sign = NEGATIVE;
+		sign = Sign::NEGATIVE;
 		a = a.substr(1, a.size() - 1);
 	}
 
@@ -196,7 +182,7 @@ std::istream& operator>>(std::istream& is, BigNum& bigNum) {
 }
 
 std::ostream& operator<<(std::ostream& os, const BigNum& bigNum) {
-	os << (bigNum.sign == NEGATIVE ? "-" : "");
+	os << (bigNum.sign == Sign::NEGATIVE ? "-" : "");
 	Digits temp = bigNum._digits;
 
 	std::reverse(temp.begin(), temp.end());
@@ -213,23 +199,28 @@ bool operator==(const BigNum& a, const BigNum& b) {
 	if(a.sign != b.sign) return false;
 	if(a._digits.size() != b._digits.size()) return false;
 
-	for(auto ab = PairIterator(a._digits, b._digits); ab.notEnd(); ab.next()) {
-		if(*ab.a != *ab.b) return false;
+	auto ia = a._digits.begin();
+	auto ib = b._digits.begin();
+
+	for (; ia != a._digits.end() && ib != b._digits.end(); ia++, ib++) {
+		if (*ia > *ib) return false;
 	}
 
 	return true;
 }
 
 bool operator>(const BigNum& a, const BigNum& b) {
-	if (a.sign == NEGATIVE && b.sign == POSITIVE) return false;
-	if (a.sign == POSITIVE && b.sign == NEGATIVE) return true;
+	if (a.sign == Sign::NEGATIVE && b.sign == Sign::POSITIVE) return false;
+	if (a.sign == Sign::POSITIVE && b.sign == Sign::NEGATIVE) return true;
 
 	if (a._digits.size() > b._digits.size()) return true;
 	if (a._digits.size() < b._digits.size()) return false;
 
-	for (auto ab = PairIterator(a._digits, b._digits); ab.notEnd();
-	     ab.next()) {
-		if (*ab.a > *ab.b) return false;
+	auto ia = a._digits.begin();
+	auto ib = b._digits.begin();
+
+	for (; ia != a._digits.end() && ib != b._digits.end(); ia++, ib++) {
+		if (*ia > *ib) return false;
 	}
 
 	return true;
