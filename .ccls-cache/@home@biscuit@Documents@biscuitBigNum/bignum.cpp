@@ -15,8 +15,12 @@ void shift_right(BigNum& a, int8_t shift);
 void normalize(BigNum& a);
 void abs(BigNum& a);
 void swap_digits(BigNum& a, BigNum& b);
+void _add(BigNum& a, const BigNum& b);
+void _subtract(BigNum& a, const BigNum& b);
+void _multiply_by_int(BigNum& a, int b);
 
 BigNum fromString(std::string a);
+BigNum fromInt(int64_t a);
 
 struct PairIterator {
     PairIterator(const Digits& a, const Digits& b) {
@@ -92,7 +96,8 @@ void shift_right(BigNum& a, int8_t shift) {
 	a._digits = res;
 }
 
-BigNum newBigNum(int64_t a) {
+BigNum fromInt(int64_t a) {
+	;
 }
 
 BigNum fromString(std::string a) {
@@ -108,8 +113,8 @@ BigNum fromString(std::string a) {
 	}
 
 	Digits res(a.size());
-	Digits::iterator resit = res.end() -1; 
-	std::string::iterator ait = a.begin();
+	Digits::iterator      resit = res.end() -1; 
+	std::string::iterator ait   = a.begin();
 
 	while(resit != res.begin() -1 && ait != a.end()) {
 		*resit-- = *ait++ - '0';
@@ -233,6 +238,8 @@ bool operator<(const BigNum& a, const BigNum b) {
 BigNum operator+(BigNum& a, const BigNum& b) {
 	BigNum c;
 	c._digits = b._digits;
+	c.sign = b.sign;
+
 	if (a.sign != b.sign) {
 		if(!(a >= b)) {
 			swap_digits(a, c);
@@ -248,6 +255,26 @@ BigNum operator+(BigNum& a, const BigNum& b) {
 	normalize(a);
 	return a;
 }
+
+BigNum operator-(BigNum& a, const BigNum& b) {
+	BigNum c;
+	c._digits = b._digits;
+	c.sign = b.sign;
+
+	if(a < b) {
+		swap_digits(a, c);
+		swap_sign_with_other(a, c);
+	}
+
+	if(a.sign == Sign::POSITIVE && c.sign == Sign::POSITIVE) {
+		_subtract(a, c);
+	}
+
+	_add(a, c);
+
+	return c;
+}
+
 #ifdef problem
 BigNum zero = fromString("0");
 BigNum gcd(BigNum a, BigNum b) {
@@ -264,7 +291,6 @@ int main() {
 	a = a + b;
 
 	std::cout << a;
-
 }
 
 /*
